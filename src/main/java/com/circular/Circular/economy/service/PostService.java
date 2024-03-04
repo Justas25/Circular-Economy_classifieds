@@ -20,7 +20,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-//@Component //tells that this class is Spring bean
 @Service //the same as @Component annotation
 public class PostService {
 
@@ -50,22 +49,22 @@ public class PostService {
         String username = jwtService.extractUsername(tokenExtracted);
         User user = userService.getUserByUsername(username);
         Post post = new Post();
-        post.setTitle(postDTO.getPostTitle());
-        post.setDescription(postDTO.getPostDescription());
-        ResourceType resourceType = ResourceType.valueOf(postDTO.getResourceTypeName());
+        post.setTitle(postDTO.postTitle());
+        post.setDescription(postDTO.postDescription());
+        ResourceType resourceType = ResourceType.valueOf(postDTO.resourceTypeName());
         post.setResourceType(resourceType);
-        post.setAddress(postDTO.getAddress());
+        post.setAddress(postDTO.address());
         try {
-            Float price = postDTO.getPrice();
+            Float price = postDTO.price();
             post.setPrice(price);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid price format");
         }
         post.setUser(user);
-        if (postDTO.getImageFile() != null) {
+        if (postDTO.imageFile() != null) {
             try {
-                InputStream fileInputStream = postDTO.getImageFile().getInputStream();
-                String dropboxFilePath = "/salvage/" + postDTO.getImageFile().getOriginalFilename();
+                InputStream fileInputStream = postDTO.imageFile().getInputStream();
+                String dropboxFilePath = "/salvage/" + postDTO.imageFile().getOriginalFilename();
                 String dropboxImageUrl = dropboxService.uploadFile(fileInputStream, dropboxFilePath);
                 post.setImage(dropboxImageUrl);
             } catch (IOException | DbxException ignored) {
@@ -84,18 +83,22 @@ public class PostService {
     public List<PostDTO> getPosts() throws DbxException {
         List<Post> posts = postRepository.findAll();
         List<PostDTO> postsWithLinkDTO = new ArrayList<>();
-
         for (Post post : posts) {
             String originalFileName = post.getImage();
-            post.setImage(originalFileName);
-
-            PostDTO postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
-                    post.getAddress(), post.getPrice(), post.getUser().getUsername(), post.getLatitude(), post.getLongitude(),
-                    post.getImage(), post.getUser().getPhoneNumber(), post.getUser().getEmail());
+            //post.setImage(originalFileName);
+            PostDTO postWithLinkDTO=null;
             try {
                 if (post.getImage() != null) {
                     String dropboxTemporaryLink = dropboxService.getTemporaryLink(originalFileName);
-                    postWithLinkDTO.setDropboxTemporaryLink(dropboxTemporaryLink);
+
+                        postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
+                            post.getAddress(), post.getPrice(), post.getUser().getUsername(), post.getLatitude(), post.getLongitude(),
+                            post.getImage(), post.getUser().getPhoneNumber(), post.getUser().getEmail(),dropboxTemporaryLink);
+
+                } else {
+                        postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
+                            post.getAddress(), post.getPrice(), post.getUser().getUsername(), post.getLatitude(), post.getLongitude(),
+                            post.getImage(), post.getUser().getPhoneNumber(), post.getUser().getEmail());
                 }
             } catch (DbxException e) {
             }
@@ -112,42 +115,44 @@ public class PostService {
         String username = jwtService.extractUsername(tokenExtracted);
         List<Post> posts = postRepository.findByUser_Username(username);
         List<PostDTO> postsWithLinkDTO = new ArrayList<>();
-
         for (Post post : posts) {
             String originalFileName = post.getImage();
-
-            PostDTO postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
-                    post.getResourceType().getDescription(), post.getPrice(), post.getAddress(), post.getUser().getUsername(),
-                    post.getLatitude(), post.getLongitude(), post.getImage());
-            try {
-                if (originalFileName!= null) {
-                    String dropboxTemporaryLink = dropboxService.getTemporaryLink(originalFileName);
-                    postWithLinkDTO.setDropboxTemporaryLink(dropboxTemporaryLink);
-                }
-            } catch (DbxException ignored) {
+            PostDTO postWithLinkDTO;
+            if (originalFileName==null) {
+                postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
+                        post.getResourceType().getDescription(), post.getPrice(), post.getAddress(), post.getUser().getUsername(),
+                        post.getLatitude(), post.getLongitude(), post.getImage());
+            } else {
+                String dropboxLink = dropboxService.getTemporaryLink(originalFileName);
+                postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
+                        post.getAddress(), post.getPrice(), post.getUser().getUsername(),
+                        post.getLatitude(), post.getLongitude(), post.getImage(),post.getUser().getPhoneNumber(),
+                        post.getUser().getEmail(),dropboxLink);
             }
             postsWithLinkDTO.add(postWithLinkDTO);
         }
         return postsWithLinkDTO;
     }
-    public Optional<PostDTO> getPostDTOById(Long postId) {
-        Optional<Post> posts = postRepository.findById(postId);
-        Post post = posts.get();
-        PostDTO postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
-                post.getResourceType().getDescription(), post.getPrice(), post.getAddress(), post.getUser().getUsername(),
-                post.getLatitude(), post.getLongitude(), post.getImage());
-        String originalFileName = post.getImage();
-        try {
-            if (originalFileName!= null) {
-                String dropboxTemporaryLink = dropboxService.getTemporaryLink(originalFileName);
-                postWithLinkDTO.setDropboxTemporaryLink(dropboxTemporaryLink);
+    public Optional<PostDTO> getPostDTOById(Long postId) throws DbxException {
+        Optional<Post> result = postRepository.findById(postId);
+        if (result.isPresent()) {
+            Post post = result.get();
+            String originalFileName = post.getImage();
+            PostDTO postWithLinkDTO;
+            if (originalFileName==null) {
+                        postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
+                        post.getResourceType().getDescription(), post.getPrice(), post.getAddress(), post.getUser().getUsername(),
+                        post.getLatitude(), post.getLongitude(), post.getImage());
+            } else {
+                String dropboxLink = dropboxService.getTemporaryLink(originalFileName);
+                        postWithLinkDTO = new PostDTO(post.getPostId(), post.getTitle(), post.getDescription(), post.getResourceType().name(),
+                        post.getAddress(), post.getPrice(), post.getUser().getUsername(),
+                        post.getLatitude(), post.getLongitude(), post.getImage(),post.getUser().getPhoneNumber(),
+                        post.getUser().getEmail(),dropboxLink);
             }
-        } catch (DbxException e) {
-        }
-        return Optional.of(postWithLinkDTO);
-    }
-    public Optional<Post> getPostById(Long postId) {
-        return postRepository.findById(postId);
+          return Optional.of(postWithLinkDTO);
+        } else return Optional.empty();
+
     }
 
     public boolean deletePost(Long postId, String token) {
@@ -192,37 +197,41 @@ public class PostService {
     }
 
     @Transactional
-    public Post updatePost(PostDTO postDTO) {
-        Optional<Post> optionalPost = postRepository.findById(postDTO.getPostId());
+    public Post updatePost(PostDTO postDTO,Long postId) {
+        Optional<Post> optionalPost = postRepository.findById(postId);
         if (optionalPost.isPresent()) {
             Post post = optionalPost.get();
 
-            if (postDTO.getImageFile() != null) {
+            if (postDTO.imageFile() != null) {
                 try {
+                    //first we delete old picture
                     if(post.getImage() != null)
                     {
                         dropboxService.deleteFile(post.getImage());
                     }
-                    InputStream fileInputStream = postDTO.getImageFile().getInputStream();
-                    String dropboxFilePath = "/salvage/" + postDTO.getImageFile().getOriginalFilename();
+                    //then upload new picture
+                    InputStream fileInputStream = postDTO.imageFile().getInputStream();
+                    String dropboxFilePath = "/salvage/" + postDTO.imageFile().getOriginalFilename();
                     String dropboxImageUrl = dropboxService.uploadFile(fileInputStream, dropboxFilePath);
                     post.setImage(dropboxImageUrl);
                 } catch (IOException | DbxException ignored) {
                 }
             }
-            post.setTitle(postDTO.getPostTitle());
-            post.setDescription(postDTO.getPostDescription());
-            if(!Objects.equals(post.getAddress(), postDTO.getAddress())){
-                post.setAddress(postDTO.getAddress());
+            //update title and description anyway
+            post.setTitle(postDTO.postTitle());
+            post.setDescription(postDTO.postDescription());
+            //update address if it is changed
+            if(!Objects.equals(post.getAddress(), postDTO.address())){
+                post.setAddress(postDTO.address());
                 Coordinates coordinates = geocodingService.getCoordinatesFromAddress(post.getAddress());
-
                 if (coordinates != null) {
                     post.setLatitude(coordinates.getLatitude());
                     post.setLongitude(coordinates.getLongitude());
                 }
             }
-            post.setPrice(postDTO.getPrice());
-            ResourceType resourceType = ResourceType.valueOf(postDTO.getResourceTypeName());
+
+            post.setPrice(postDTO.price());
+            ResourceType resourceType = ResourceType.valueOf(postDTO.resourceTypeName());
             post.setResourceType(resourceType);
             return post;
         }
