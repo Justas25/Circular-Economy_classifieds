@@ -1,6 +1,5 @@
 # Circular Economy Zero Waste Web application
-<p>Created for Accenture Java bootcamp by Eglė Janušaitytė, Justinas Lukšas, Mindaugas Mažeika, Arnas Andrulis.</p>
-<div>
+<p>Initially created for Accenture Java bootcamp mainly by Eglė Janušaitytė and Justinas Lukšas. Further development by Justinas Lukšas</p>
 <p>We all separate waste at home, but the situation in the construction sector is still not good enough.</p>
 <p>The construction and renovation of homes generates a lot of leftover old and new building materials. The amount of waste is substantial, including items like old bricks, slabs, outdated tiles, wood, unused bags of cement, and still-functional windows and doors. Additionally, there are numerous smaller remnants of recently purchased building materials that were acquired in excess.</p>
 <p>Introducing our innovative solution: envision a space where individuals can discover, exchange, and acquire building materials seamlessly, empowering you to transact in a way that suits your preferences. Welcome to a new era of convenience and choice!</p>
